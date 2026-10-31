@@ -1,56 +1,942 @@
-const LOCALE='pt-BR';
-const DIGITAL_ASSETS=new Set(['BTC','BCH','ETH','LTC','XRP']);
-const THEME_KEY='moeda.theme.v1';
-const COUNTRY_BY_CURRENCY={BRL:['BR'],USD:['US','AS','EC','FM','GU','MH','MP','PR','PW','SV','TC','VG','VI','BQ'],EUR:['AT','BE','CY','DE','EE','ES','FI','FR','GR','HR','IE','IT','LT','LU','LV','MC','MT','NL','PT','SI','SK','SM','VA','AD','ME','XK'],GBP:['GB','GG','IM','JE'],JPY:['JP'],CAD:['CA'],CHF:['CH','LI'],CHE:['CH'],CHW:['CH'],CLF:['CL'],COU:['CO'],FKP:['FK'],SHP:['SH'],MXV:['MX'],UYI:['UY'],UYW:['UY'],USN:['US'],AUD:['AU','KI','NR','TV'],AED:['AE'],AFN:['AF'],ALL:['AL'],AMD:['AM'],ANG:['CW','SX'],AOA:['AO'],ARS:['AR'],AWG:['AW'],AZN:['AZ'],BAM:['BA'],BBD:['BB'],BDT:['BD'],BGN:['BG'],BHD:['BH'],BIF:['BI'],BMD:['BM'],BND:['BN'],BOB:['BO'],BSD:['BS'],BTN:['BT'],BWP:['BW'],BYN:['BY'],BZD:['BZ'],CDF:['CD'],CLP:['CL'],CNY:['CN'],COP:['CO'],CRC:['CR'],CUP:['CU'],CVE:['CV'],CZK:['CZ'],DJF:['DJ'],DKK:['DK','FO','GL'],DOP:['DO'],DZD:['DZ'],EGP:['EG'],ERN:['ER'],ETB:['ET'],FJD:['FJ'],GEL:['GE'],GHS:['GH'],GIP:['GI'],GMD:['GM'],GNF:['GN'],GTQ:['GT'],HKD:['HK'],HNL:['HN'],HUF:['HU'],IDR:['ID'],ILS:['IL','PS'],INR:['IN'],IQD:['IQ'],IRR:['IR'],ISK:['IS'],JMD:['JM'],JOD:['JO'],KES:['KE'],KGS:['KG'],KHR:['KH'],KMF:['KM'],KPW:['KP'],KRW:['KR'],KWD:['KW'],KYD:['KY'],KZT:['KZ'],LAK:['LA'],LBP:['LB'],LKR:['LK'],LRD:['LR'],LSL:['LS'],LYD:['LY'],MAD:['MA','EH'],MDL:['MD'],MGA:['MG'],MKD:['MK'],MMK:['MM'],MNT:['MN'],MOP:['MO'],MRU:['MR'],MUR:['MU'],MVR:['MV'],MWK:['MW'],MXN:['MX'],MYR:['MY'],MZN:['MZ'],NAD:['NA'],NGN:['NG'],NIO:['NI'],NOK:['NO','SJ'],NPR:['NP'],NZD:['NZ','CK','NU','PN','TK'],OMR:['OM'],PAB:['PA'],PEN:['PE'],PGK:['PG'],PHP:['PH'],PKR:['PK'],PLN:['PL'],PYG:['PY'],QAR:['QA'],RON:['RO'],RSD:['RS'],RUB:['RU'],RWF:['RW'],SAR:['SA'],SBD:['SB'],SCR:['SC'],SDG:['SD'],SEK:['SE'],SGD:['SG'],SLE:['SL'],SOS:['SO'],SRD:['SR'],SSP:['SS'],STN:['ST'],SVC:['SV'],SYP:['SY'],SZL:['SZ'],THB:['TH'],TJS:['TJ'],TMT:['TM'],TND:['TN'],TOP:['TO'],TRY:['TR'],TTD:['TT'],TWD:['TW'],TZS:['TZ'],UAH:['UA'],UGX:['UG'],UYU:['UY'],UZS:['UZ'],VES:['VE'],VND:['VN'],VUV:['VU'],WST:['WS'],XAF:['CM','CF','TD','CG','GQ','GA'],XCD:['AG','AI','DM','GD','KN','LC','MS','VC'],XCG:['CW','SX'],XOF:['BJ','BF','CI','GW','ML','NE','SN','TG'],XPF:['PF','NC','WF'],YER:['YE'],ZAR:['ZA','LS','NA','SZ'],ZMW:['ZM'],ZWG:['ZW']};
-const REGIONS=new Intl.DisplayNames([LOCALE],{type:'region'}),NAMES=new Intl.DisplayNames([LOCALE],{type:'currency'}),collator=new Intl.Collator(LOCALE,{sensitivity:'base'}),HISTORY_KEY='moeda.history.v1',FAV_KEY='moeda.favorites.v1';
-const amountInput=document.querySelector('#amount'),resultValue=document.querySelector('#result-value'),rateInfo=document.querySelector('#rate-info'),convertButton=document.querySelector('#convert-button'),refreshButton=document.querySelector('#refresh-rate'),copyButton=document.querySelector('#copy-result');
-const fromPicker=createPicker('from'),toPicker=createPicker('to'),themeToggle=document.querySelector('#theme-toggle');
-function setTheme(theme){document.documentElement.dataset.theme=theme;themeToggle.setAttribute('aria-pressed',String(theme==='dark'));themeToggle.textContent=theme==='dark'?'☀️ Tema claro':'🌙 Tema escuro';document.querySelector('meta[name=theme-color]').content=theme==='dark'?'#171b19':'#f6f4ef';try{localStorage.setItem(THEME_KEY,theme);}catch{}}
-let initialTheme='light';try{initialTheme=localStorage.getItem(THEME_KEY)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}catch{}setTheme(initialTheme);themeToggle.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));let currencies=[],lastResult=null,requestId=0,favorites=readStored(FAV_KEY,['BRL','USD','EUR']),history=readStored(HISTORY_KEY,[]);
-function readStored(k,f){try{const v=JSON.parse(localStorage.getItem(k));return Array.isArray(v)?v:f;}catch{return f;}}
-function saveStored(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
-function flag(region){return String.fromCodePoint(...[...region].map(c=>127397+c.charCodeAt(0)));}
-function details(item){let name=item.providerName;try{name=NAMES.of(item.code)||name;}catch{}if(!name||name===item.code)name=item.providerName||item.code;const regions=COUNTRY_BY_CURRENCY[item.code]||[],countries=regions.map(r=>REGIONS.of(r)).filter(Boolean);let symbol='';try{symbol=new Intl.NumberFormat(LOCALE,{style:'currency',currency:item.code}).formatToParts(0).find(p=>p.type==='currency')?.value||'';}catch{}if(!symbol)symbol=item.providerSymbol||'';const flags=regions.length===1?flag(regions[0]):regions.length>1?'🌐':'',category=DIGITAL_ASSETS.has(item.code)?'digital':'fiat',searchable=[name,item.code,symbol,...countries,item.providerName].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase(LOCALE);return{...item,name,countries,countryLabel:countries.join(', '),symbol,flags,category,searchable};}
-function label(c){return(c.flags?c.flags+' ':'')+c.code+' · '+c.name+(c.symbol?' · '+c.symbol:'');}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function createPicker(prefix){const input=document.querySelector('#'+prefix+'-search'),list=document.querySelector('#'+prefix+'-options'),state={prefix,input,list,wrapper:input.closest('.picker-shell'),selected:null,matches:[],active:0};input.addEventListener('focus',()=>{input.select();options(state,'');});input.addEventListener('input',()=>options(state,input.value));input.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement!==input)close(state);},0));input.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();state.active=Math.max(0,Math.min(state.matches.length-1,state.active+(e.key==='ArrowDown'?1:-1)));active(state);}else if(e.key==='Enter'&&!list.hidden&&state.matches[state.active]){e.preventDefault();choose(state,state.matches[state.active]);}else if(e.key==='Escape')close(state);});document.addEventListener('click',e=>{if(!state.wrapper.contains(e.target)&&!state.list.contains(e.target))close(state);});window.addEventListener('resize',()=>{if(!state.list.hidden)positionOptions(state);});window.addEventListener('scroll',()=>{if(!state.list.hidden)positionOptions(state);},true);return state;}
-function positionOptions(s){const rect=s.input.getBoundingClientRect(),width=Math.min(320,window.innerWidth-16),gap=10,rightSpace=window.innerWidth-rect.right,leftSpace=rect.left;let left;if(rightSpace>=width+gap)left=rect.right+gap;else if(leftSpace>=width+gap)left=rect.left-width-gap;else left=8;const maxHeight=Math.min(320,window.innerHeight-16),height=Math.min(s.list.scrollHeight,maxHeight),top=Math.max(8,Math.min(rect.top,window.innerHeight-height-8));s.list.style.left=Math.max(8,Math.min(left,window.innerWidth-width-8))+'px';s.list.style.top=top+'px';s.list.style.width=width+'px';s.list.style.maxHeight=maxHeight+'px';}
-function options(s,q=''){const query=q.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase(LOCALE);s.matches=currencies.filter(c=>!query||c.searchable.includes(query)).sort((a,b)=>a.category===b.category?collator.compare(a.name,b.name):a.category==='fiat'?-1:1);s.active=0;s.list.replaceChildren();if(!s.matches.length){const el=document.createElement('div');el.className='picker-empty';el.textContent='Nenhuma moeda encontrada';s.list.append(el);}else{let currentGroup=null,groupElement=null;s.matches.forEach((c,i)=>{if(c.category!==currentGroup){currentGroup=c.category;groupElement=document.createElement('div');groupElement.className='picker-group';groupElement.setAttribute('role','group');groupElement.setAttribute('aria-label',currentGroup==='digital'?'Ativos digitais':'Moedas oficiais atuais');const heading=document.createElement('div');heading.className='picker-group-label';heading.textContent=currentGroup==='digital'?'Ativos digitais · cotação diária':'Moedas oficiais atuais';groupElement.append(heading);s.list.append(groupElement);}const el=document.createElement('button');el.type='button';el.className='picker-option';el.id=s.prefix+'-option-'+i;el.setAttribute('role','option');el.setAttribute('tabindex','-1');el.setAttribute('aria-selected',String(c.code===s.selected?.code));el.innerHTML="<span class='option-code'>"+esc((c.flags?c.flags+' ':'')+c.code)+"</span><span class='option-name'>"+esc(c.name)+(c.countryLabel?'<small>'+esc(c.countryLabel)+'</small>':'')+"</span><span class='option-symbol'>"+esc(c.symbol)+"</span>";el.addEventListener('mousedown',event=>event.preventDefault());el.addEventListener('click',()=>choose(s,c));groupElement.append(el);});}s.list.hidden=false;s.input.setAttribute('aria-expanded','true');positionOptions(s);active(s);}
-function active(s){[...s.list.querySelectorAll('.picker-option')].forEach((el,i)=>el.classList.toggle('active',i===s.active));const el=s.list.querySelector('#'+s.prefix+'-option-'+s.active);if(el){s.input.setAttribute('aria-activedescendant',el.id);el.scrollIntoView({block:'nearest'});}else s.input.removeAttribute('aria-activedescendant');}
-function close(s){s.list.hidden=true;s.input.setAttribute('aria-expanded','false');s.input.removeAttribute('aria-activedescendant');}
-function choose(s,c){s.selected=c;s.input.value=label(c);close(s);decorate();renderFavorites();convert();}
-function find(code){return currencies.find(c=>c.code===code);}
-function normalizeAmount(value){let text=String(value).trim().replace(/\s/g,'');if(text.includes(',')&&text.includes('.')){const decimal=text.lastIndexOf(',')>text.lastIndexOf('.')?',':'.',grouping=decimal===','?'.':',';text=text.split(grouping).join('').replace(decimal,'.');}else if(text.includes(',')){if((text.match(/,/g)||[]).length!==1)return'';text=text.replace(',','.');}return /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)?text:'';}
-function sanitizeHistory(){history=history.flatMap(item=>{if(!item||typeof item!=='object'||!item.from||!item.to||typeof item.from.code!=='string'||typeof item.to.code!=='string'||typeof item.result!=='string'||typeof item.date!=='string'||typeof item.fetchedAt!=='string')return[];const from=find(item.from.code),to=find(item.to.code),amount=normalizeAmount(item.amount),rate=Number(item.rate);if(!from||!to||!amount||!Number.isFinite(Number(amount))||!Number.isFinite(rate)||rate<=0||!Number.isFinite(Date.parse(item.fetchedAt))||!/^\d{4}-\d{2}-\d{2}$/.test(item.date))return[];return[{...item,from,to,amount,rate}];}).slice(0,6);saveStored(HISTORY_KEY,history);}
-function decorate(){const a=fromPicker.selected,b=toPicker.selected;document.querySelector('#from-flag').textContent=a?.flags||'¤';document.querySelector('#to-flag').textContent=b?.flags||'¤';document.querySelector('#amount-symbol').textContent=a?.symbol||a?.code||'¤';for(const p of [fromPicker,toPicker]){const btn=document.querySelector('[data-favorite="'+p.prefix+'"]'),yes=p.selected&&favorites.includes(p.selected.code);btn.textContent=yes?'★':'☆';btn.classList.toggle('is-favorite',Boolean(yes));btn.setAttribute('aria-label',(yes?'Remover ':'Adicionar ')+(p.selected?.name||'moeda')+(yes?' dos favoritos':' aos favoritos'));}}
-function currencyDigits(c){try{return new Intl.NumberFormat(LOCALE,{style:'currency',currency:c.code}).resolvedOptions().maximumFractionDigits;}catch{return 2;}}
-function money(n,c){const d=currencyDigits(c);n=CurrencyMath.multiplyDecimal(String(n),1,d);const [whole='0',fraction='']=String(n).split('.'),wholeText=new Intl.NumberFormat(LOCALE,{useGrouping:true,maximumFractionDigits:0}).format(BigInt(whole||'0')),fractionText=d?new Intl.NumberFormat(LOCALE,{useGrouping:false,minimumIntegerDigits:d,maximumFractionDigits:0}).format(BigInt((fraction+'0'.repeat(d)).slice(0,d)||'0')):'',decimalMark=new Intl.NumberFormat(LOCALE,{minimumFractionDigits:1}).formatToParts(1.1).find(p=>p.type==='decimal')?.value||',',number=wholeText+(d?decimalMark+fractionText:''),parts=new Intl.NumberFormat(LOCALE,{style:'currency',currency:c.code,minimumFractionDigits:d,maximumFractionDigits:d}).formatToParts(0),first=parts.findIndex(p=>p.type==='integer'),last=parts.map(p=>['integer','group','decimal','fraction'].includes(p.type)).lastIndexOf(true);return parts.slice(0,first).map(p=>p.value).join('')+number+parts.slice(last+1).map(p=>p.value).join('');}
-function rateText(n){return new Intl.NumberFormat(LOCALE,{maximumSignificantDigits:8}).format(n);}
-function stamp(date,fetched){const day=new Intl.DateTimeFormat(LOCALE,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(date+'T00:00:00')),time=new Intl.DateTimeFormat(LOCALE,{hour:'2-digit',minute:'2-digit'}).format(new Date(fetched));return'Taxa de referência de '+day+' · consulta local às '+time;}
-function error(message){resultValue.classList.remove('loading','success');resultValue.textContent=message;resultValue.classList.add('error');rateInfo.textContent='';refreshButton.disabled=false;copyButton.disabled=true;lastResult=null;}
-async function convert({refresh=false,record=false}={}){
- if(!fromPicker.selected||!toPicker.selected)return;const id=++requestId,amountText=normalizeAmount(amountInput.value),amount=Number(amountText),from=fromPicker.selected,to=toPicker.selected;resultValue.classList.remove('error');
- if(!amountText||!Number.isFinite(amount)||amount<0){error('Informe um valor válido.');return;}
- convertButton.disabled=true;refreshButton.disabled=true;copyButton.disabled=true;resultValue.classList.remove('success');resultValue.textContent='…';resultValue.classList.add('loading');rateInfo.textContent='Consultando cotação de referência…';
- try{
-  const data=from.code===to.code?{rate:1,date:new Date().toISOString().slice(0,10),fetchedAt:new Date().toISOString()}:await CurrencyProvider.getRate(from.code,to.code,{refresh});
-  if(id!==requestId)return;const decimal=CurrencyMath.multiplyDecimal(amountText,data.rate,currencyDigits(to)),value=Number(decimal);if(!Number.isFinite(value))throw new Error('O valor calculado excede o limite permitido.');
-  const shown=money(decimal,to);resultValue.textContent=shown;resultValue.classList.remove('loading');resultValue.classList.add('success');rateInfo.textContent=from.code===to.code?'1 '+from.code+' = 1 '+to.code+' · mesma moeda, sem cotação externa':rateText(data.rate)+' '+to.code+' por 1 '+from.code+' · '+stamp(data.date,data.fetchedAt);
-  lastResult={amount:amountText,from,to,rate:data.rate,date:data.date,fetchedAt:data.fetchedAt,result:shown};refreshButton.disabled=from.code===to.code;copyButton.disabled=false;if(record)addHistory(lastResult);
- }catch(e){if(id!==requestId)return;resultValue.classList.remove('loading');error(e.message||'Não foi possível consultar a cotação. Verifique a conexão e tente novamente.');}
- finally{if(id===requestId)convertButton.disabled=false;}
+const LOCALE = "pt-BR";
+const DIGITAL_ASSETS = new Set(["BTC", "BCH", "ETH", "LTC", "XRP"]);
+const THEME_KEY = "moeda.theme.v1";
+const FLAG_BASE_URL =
+  "https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.5.0/flags/4x3/";
+const FLAG_BY_CURRENCY = {
+  USD: "us",
+  EUR: "eu",
+  GBP: "gb",
+  CHF: "ch",
+  AUD: "au",
+  NZD: "nz",
+  DKK: "dk",
+  ILS: "il",
+  NOK: "no",
+  ZAR: "za",
+};
+const COUNTRY_BY_CURRENCY = {
+  BRL: ["BR"],
+  USD: [
+    "US",
+    "AS",
+    "EC",
+    "FM",
+    "GU",
+    "MH",
+    "MP",
+    "PR",
+    "PW",
+    "SV",
+    "TC",
+    "VG",
+    "VI",
+    "BQ",
+  ],
+  EUR: [
+    "AT",
+    "BE",
+    "CY",
+    "DE",
+    "EE",
+    "ES",
+    "FI",
+    "FR",
+    "GR",
+    "HR",
+    "IE",
+    "IT",
+    "LT",
+    "LU",
+    "LV",
+    "MC",
+    "MT",
+    "NL",
+    "PT",
+    "SI",
+    "SK",
+    "SM",
+    "VA",
+    "AD",
+    "ME",
+    "XK",
+  ],
+  GBP: ["GB", "GG", "IM", "JE"],
+  JPY: ["JP"],
+  CAD: ["CA"],
+  CHF: ["CH", "LI"],
+  CHE: ["CH"],
+  CHW: ["CH"],
+  CLF: ["CL"],
+  COU: ["CO"],
+  FKP: ["FK"],
+  SHP: ["SH"],
+  MXV: ["MX"],
+  UYI: ["UY"],
+  UYW: ["UY"],
+  USN: ["US"],
+  AUD: ["AU", "KI", "NR", "TV"],
+  AED: ["AE"],
+  AFN: ["AF"],
+  ALL: ["AL"],
+  AMD: ["AM"],
+  ANG: ["CW", "SX"],
+  AOA: ["AO"],
+  ARS: ["AR"],
+  AWG: ["AW"],
+  AZN: ["AZ"],
+  BAM: ["BA"],
+  BBD: ["BB"],
+  BDT: ["BD"],
+  BGN: ["BG"],
+  BHD: ["BH"],
+  BIF: ["BI"],
+  BMD: ["BM"],
+  BND: ["BN"],
+  BOB: ["BO"],
+  BSD: ["BS"],
+  BTN: ["BT"],
+  BWP: ["BW"],
+  BYN: ["BY"],
+  BZD: ["BZ"],
+  CDF: ["CD"],
+  CLP: ["CL"],
+  CNY: ["CN"],
+  COP: ["CO"],
+  CRC: ["CR"],
+  CUP: ["CU"],
+  CVE: ["CV"],
+  CZK: ["CZ"],
+  DJF: ["DJ"],
+  DKK: ["DK", "FO", "GL"],
+  DOP: ["DO"],
+  DZD: ["DZ"],
+  EGP: ["EG"],
+  ERN: ["ER"],
+  ETB: ["ET"],
+  FJD: ["FJ"],
+  GEL: ["GE"],
+  GHS: ["GH"],
+  GIP: ["GI"],
+  GMD: ["GM"],
+  GNF: ["GN"],
+  GTQ: ["GT"],
+  HKD: ["HK"],
+  HNL: ["HN"],
+  HUF: ["HU"],
+  IDR: ["ID"],
+  ILS: ["IL", "PS"],
+  INR: ["IN"],
+  IQD: ["IQ"],
+  IRR: ["IR"],
+  ISK: ["IS"],
+  JMD: ["JM"],
+  JOD: ["JO"],
+  KES: ["KE"],
+  KGS: ["KG"],
+  KHR: ["KH"],
+  KMF: ["KM"],
+  KPW: ["KP"],
+  KRW: ["KR"],
+  KWD: ["KW"],
+  KYD: ["KY"],
+  KZT: ["KZ"],
+  LAK: ["LA"],
+  LBP: ["LB"],
+  LKR: ["LK"],
+  LRD: ["LR"],
+  LSL: ["LS"],
+  LYD: ["LY"],
+  MAD: ["MA", "EH"],
+  MDL: ["MD"],
+  MGA: ["MG"],
+  MKD: ["MK"],
+  MMK: ["MM"],
+  MNT: ["MN"],
+  MOP: ["MO"],
+  MRU: ["MR"],
+  MUR: ["MU"],
+  MVR: ["MV"],
+  MWK: ["MW"],
+  MXN: ["MX"],
+  MYR: ["MY"],
+  MZN: ["MZ"],
+  NAD: ["NA"],
+  NGN: ["NG"],
+  NIO: ["NI"],
+  NOK: ["NO", "SJ"],
+  NPR: ["NP"],
+  NZD: ["NZ", "CK", "NU", "PN", "TK"],
+  OMR: ["OM"],
+  PAB: ["PA"],
+  PEN: ["PE"],
+  PGK: ["PG"],
+  PHP: ["PH"],
+  PKR: ["PK"],
+  PLN: ["PL"],
+  PYG: ["PY"],
+  QAR: ["QA"],
+  RON: ["RO"],
+  RSD: ["RS"],
+  RUB: ["RU"],
+  RWF: ["RW"],
+  SAR: ["SA"],
+  SBD: ["SB"],
+  SCR: ["SC"],
+  SDG: ["SD"],
+  SEK: ["SE"],
+  SGD: ["SG"],
+  SLE: ["SL"],
+  SOS: ["SO"],
+  SRD: ["SR"],
+  SSP: ["SS"],
+  STN: ["ST"],
+  SVC: ["SV"],
+  SYP: ["SY"],
+  SZL: ["SZ"],
+  THB: ["TH"],
+  TJS: ["TJ"],
+  TMT: ["TM"],
+  TND: ["TN"],
+  TOP: ["TO"],
+  TRY: ["TR"],
+  TTD: ["TT"],
+  TWD: ["TW"],
+  TZS: ["TZ"],
+  UAH: ["UA"],
+  UGX: ["UG"],
+  UYU: ["UY"],
+  UZS: ["UZ"],
+  VES: ["VE"],
+  VND: ["VN"],
+  VUV: ["VU"],
+  WST: ["WS"],
+  XAF: ["CM", "CF", "TD", "CG", "GQ", "GA"],
+  XCD: ["AG", "AI", "DM", "GD", "KN", "LC", "MS", "VC"],
+  XCG: ["CW", "SX"],
+  XOF: ["BJ", "BF", "CI", "GW", "ML", "NE", "SN", "TG"],
+  XPF: ["PF", "NC", "WF"],
+  YER: ["YE"],
+  ZAR: ["ZA", "LS", "NA", "SZ"],
+  ZMW: ["ZM"],
+  ZWG: ["ZW"],
+};
+const REGIONS = new Intl.DisplayNames([LOCALE], { type: "region" }),
+  NAMES = new Intl.DisplayNames([LOCALE], { type: "currency" }),
+  collator = new Intl.Collator(LOCALE, { sensitivity: "base" }),
+  HISTORY_KEY = "moeda.history.v1",
+  FAV_KEY = "moeda.favorites.v1";
+const amountInput = document.querySelector("#amount"),
+  resultValue = document.querySelector("#result-value"),
+  rateInfo = document.querySelector("#rate-info"),
+  convertButton = document.querySelector("#convert-button"),
+  refreshButton = document.querySelector("#refresh-rate"),
+  copyButton = document.querySelector("#copy-result"),
+  swapButton = document.querySelector("#swap");
+const fromPicker = createPicker("from"),
+  toPicker = createPicker("to"),
+  themeToggle = document.querySelector("#theme-toggle");
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
+  themeToggle.textContent =
+    theme === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+  document.querySelector("meta[name=theme-color]").content =
+    theme === "dark" ? "#171b19" : "#f6f4ef";
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {}
 }
-function addHistory(entry){history=[entry,...history.filter(x=>!(x.from.code===entry.from.code&&x.to.code===entry.to.code&&x.amount===entry.amount))].slice(0,6);saveStored(HISTORY_KEY,history);renderHistory();}
-function renderHistory(){const list=document.querySelector('#history-list');list.replaceChildren();if(!history.length){const li=document.createElement('li');li.className='muted';li.textContent='Suas conversões aparecerão aqui.';list.append(li);return;}for(const item of history){const row=document.createElement('li');row.className='history-item';const info=document.createElement('div');info.innerHTML='<strong>'+esc(money(item.amount,item.from))+' <span>→</span> '+esc(item.to.code)+'</strong><small>'+esc(item.from.code+' para '+item.to.code+' · '+new Intl.DateTimeFormat(LOCALE,{dateStyle:'short',timeStyle:'short'}).format(new Date(item.fetchedAt)))+'</small>';const value=document.createElement('strong');value.className='history-value';value.textContent=item.result;row.append(info,value);row.addEventListener('click',()=>{amountInput.value=item.amount;fromPicker.selected=find(item.from.code);toPicker.selected=find(item.to.code);fromPicker.input.value=label(fromPicker.selected);toPicker.input.value=label(toPicker.selected);decorate();convert();});list.append(row);}}
-function renderFavorites(){const box=document.querySelector('#favorite-chips');box.replaceChildren();const list=favorites.map(find).filter(Boolean).sort((a,b)=>collator.compare(a.name,b.name));if(!list.length){const empty=document.createElement('span');empty.className='muted';empty.textContent='Toque na estrela para salvar moedas';box.append(empty);return;}for(const c of list){const chip=document.createElement('button');chip.type='button';chip.className='favorite-chip';chip.textContent=c.code+' '+c.name;chip.title='Selecionar '+c.name;chip.addEventListener('click',()=>{toPicker.selected=c;toPicker.input.value=label(c);decorate();convert();});box.append(chip);}}
-function toggleFavorite(prefix){const c=(prefix==='from'?fromPicker:toPicker).selected;if(!c)return;favorites=favorites.includes(c.code)?favorites.filter(code=>code!==c.code):[...favorites,c.code];saveStored(FAV_KEY,favorites);decorate();renderFavorites();}
-document.querySelector('#converter-form').addEventListener('submit',e=>{e.preventDefault();convert({record:true});});
-amountInput.addEventListener('input',()=>convert());
-document.querySelector('#swap').addEventListener('click',()=>{const swapped=CurrencyMath.swapCurrencies(fromPicker.selected,toPicker.selected);fromPicker.selected=swapped.from;toPicker.selected=swapped.to;fromPicker.input.value=label(fromPicker.selected);toPicker.input.value=label(toPicker.selected);decorate();convert();});
-document.querySelector('[data-favorite="from"]').addEventListener('click',()=>toggleFavorite('from'));
-document.querySelector('[data-favorite="to"]').addEventListener('click',()=>toggleFavorite('to'));
-refreshButton.addEventListener('click',()=>convert({refresh:true}));
-copyButton.addEventListener('click',async()=>{if(!lastResult)return;try{await navigator.clipboard.writeText(money(lastResult.amount,lastResult.from)+' = '+lastResult.result);copyButton.textContent='✓ Copiado';setTimeout(()=>copyButton.textContent='▢ Copiar resultado',1600);}catch{rateInfo.textContent='Não foi possível copiar neste navegador.';}});
-document.querySelector('#clear-history').addEventListener('click',()=>{history=[];saveStored(HISTORY_KEY,history);renderHistory();});
-async function initialize(){try{const items=await CurrencyProvider.getCurrencies();currencies=items.map(details).sort((a,b)=>a.category===b.category?collator.compare(a.name,b.name):a.category==='fiat'?-1:1);sanitizeHistory();fromPicker.input.disabled=false;toPicker.input.disabled=false;fromPicker.selected=find('BRL')||currencies[0];toPicker.selected=find('USD')||currencies.find(c=>c.code!==fromPicker.selected.code)||currencies[0];fromPicker.input.value=label(fromPicker.selected);toPicker.input.value=label(toPicker.selected);decorate();renderFavorites();renderHistory();convert();}catch(e){error('Não foi possível carregar as moedas: '+e.message);rateInfo.textContent='Verifique a conexão e recarregue a página.';}}
+let initialTheme = "light";
+try {
+  initialTheme =
+    localStorage.getItem(THEME_KEY) ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+} catch {}
+setTheme(initialTheme);
+themeToggle.addEventListener("click", () =>
+  setTheme(
+    document.documentElement.dataset.theme === "dark" ? "light" : "dark",
+  ),
+);
+let currencies = [],
+  lastResult = null,
+  requestId = 0,
+  amountDebounce = null,
+  favorites = readStored(FAV_KEY, ["BRL", "USD", "EUR"]),
+  history = readStored(HISTORY_KEY, []);
+function readStored(k, f) {
+  try {
+    const v = JSON.parse(localStorage.getItem(k));
+    return Array.isArray(v) ? v : f;
+  } catch {
+    return f;
+  }
+}
+function saveStored(k, v) {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {}
+}
+function details(item) {
+  let name = item.providerName;
+  try {
+    name = NAMES.of(item.code) || name;
+  } catch {}
+  if (!name || name === item.code) name = item.providerName || item.code;
+  const regions = COUNTRY_BY_CURRENCY[item.code] || [],
+    countries = regions.map((r) => REGIONS.of(r)).filter(Boolean);
+  let symbol = "";
+  try {
+    symbol =
+      new Intl.NumberFormat(LOCALE, { style: "currency", currency: item.code })
+        .formatToParts(0)
+        .find((p) => p.type === "currency")?.value || "";
+  } catch {}
+  if (!symbol) symbol = item.providerSymbol || "";
+  const flagCode =
+      FLAG_BY_CURRENCY[item.code] ||
+      (regions.length === 1 ? regions[0].toLowerCase() : ""),
+    category = DIGITAL_ASSETS.has(item.code) ? "digital" : "fiat",
+    searchable = [name, item.code, symbol, ...countries, item.providerName]
+      .join(" ")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase(LOCALE);
+  return {
+    ...item,
+    name,
+    countries,
+    countryLabel: countries.join(", "),
+    symbol,
+    flagCode,
+    category,
+    searchable,
+  };
+}
+function label(c) {
+  return c.code + " \u00b7 " + c.name + (c.symbol ? " \u00b7 " + c.symbol : "");
+}
+function esc(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+}
+function createPicker(prefix) {
+  const input = document.querySelector("#" + prefix + "-search"),
+    list = document.querySelector("#" + prefix + "-options"),
+    state = {
+      prefix,
+      input,
+      list,
+      wrapper: input.closest(".picker-shell"),
+      selected: null,
+      matches: [],
+      active: 0,
+    };
+  input.addEventListener("focus", () => {
+    input.select();
+    options(state, "");
+  });
+  input.addEventListener("input", () => options(state, input.value));
+  input.addEventListener("blur", () =>
+    setTimeout(() => {
+      if (document.activeElement !== input) close(state);
+    }, 0),
+  );
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      state.active = Math.max(
+        0,
+        Math.min(
+          state.matches.length - 1,
+          state.active + (e.key === "ArrowDown" ? 1 : -1),
+        ),
+      );
+      active(state);
+    } else if (
+      e.key === "Enter" &&
+      !list.hidden &&
+      state.matches[state.active]
+    ) {
+      e.preventDefault();
+      choose(state, state.matches[state.active]);
+    } else if (e.key === "Escape") close(state);
+  });
+  document.addEventListener("click", (e) => {
+    if (!state.wrapper.contains(e.target) && !state.list.contains(e.target))
+      close(state);
+  });
+  window.addEventListener("resize", () => {
+    if (!state.list.hidden) positionOptions(state);
+  });
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!state.list.hidden) positionOptions(state);
+    },
+    true,
+  );
+  return state;
+}
+function positionOptions(s) {
+  const rect = s.input.getBoundingClientRect(),
+    width = Math.min(320, window.innerWidth - 16),
+    gap = 10,
+    rightSpace = window.innerWidth - rect.right,
+    leftSpace = rect.left;
+  let left;
+  if (rightSpace >= width + gap) left = rect.right + gap;
+  else if (leftSpace >= width + gap) left = rect.left - width - gap;
+  else left = 8;
+  const maxHeight = Math.min(320, window.innerHeight - 16),
+    height = Math.min(s.list.scrollHeight, maxHeight),
+    top = Math.max(8, Math.min(rect.top, window.innerHeight - height - 8));
+  s.list.style.left =
+    Math.max(8, Math.min(left, window.innerWidth - width - 8)) + "px";
+  s.list.style.top = top + "px";
+  s.list.style.width = width + "px";
+  s.list.style.maxHeight = maxHeight + "px";
+}
+function options(s, q = "") {
+  const query = q
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase(LOCALE);
+  s.matches = currencies
+    .filter((c) => !query || c.searchable.includes(query))
+    .sort((a, b) =>
+      a.category === b.category
+        ? collator.compare(a.name, b.name)
+        : a.category === "fiat"
+          ? -1
+          : 1,
+    );
+  s.active = 0;
+  s.list.replaceChildren();
+  if (!s.matches.length) {
+    const el = document.createElement("div");
+    el.className = "picker-empty";
+    el.textContent = "Nenhuma moeda encontrada";
+    s.list.append(el);
+  } else {
+    let currentGroup = null,
+      groupElement = null;
+    s.matches.forEach((c, i) => {
+      if (c.category !== currentGroup) {
+        currentGroup = c.category;
+        groupElement = document.createElement("div");
+        groupElement.className = "picker-group";
+        groupElement.setAttribute("role", "group");
+        groupElement.setAttribute(
+          "aria-label",
+          currentGroup === "digital"
+            ? "Ativos digitais"
+            : "Moedas oficiais atuais",
+        );
+        const heading = document.createElement("div");
+        heading.className = "picker-group-label";
+        heading.textContent =
+          currentGroup === "digital"
+            ? "Ativos digitais · cotação diária"
+            : "Moedas oficiais atuais";
+        groupElement.append(heading);
+        s.list.append(groupElement);
+      }
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "picker-option";
+      el.id = s.prefix + "-option-" + i;
+      el.setAttribute("role", "option");
+      el.setAttribute("tabindex", "-1");
+      el.setAttribute("aria-selected", String(c.code === s.selected?.code));
+      const optionFlag = c.flagCode
+        ? "<img class='option-flag' src='" +
+          FLAG_BASE_URL +
+          esc(c.flagCode) +
+          ".svg' alt='' loading='lazy'>"
+        : "";
+      el.innerHTML =
+        "<span class='option-code'>" +
+        optionFlag +
+        esc(c.code) +
+        "</span><span class='option-name'>" +
+        esc(c.name) +
+        (c.countryLabel ? "<small>" + esc(c.countryLabel) + "</small>" : "") +
+        "</span><span class='option-symbol'>" +
+        esc(c.symbol) +
+        "</span>";
+      el.querySelector(".option-flag")?.addEventListener("error", (event) => {
+        event.currentTarget.remove();
+      });
+      el.addEventListener("mousedown", (event) => event.preventDefault());
+      el.addEventListener("click", () => choose(s, c));
+      groupElement.append(el);
+    });
+  }
+  s.list.hidden = false;
+  s.input.setAttribute("aria-expanded", "true");
+  positionOptions(s);
+  active(s);
+}
+function active(s) {
+  [...s.list.querySelectorAll(".picker-option")].forEach((el, i) =>
+    el.classList.toggle("active", i === s.active),
+  );
+  const el = s.list.querySelector("#" + s.prefix + "-option-" + s.active);
+  if (el) {
+    s.input.setAttribute("aria-activedescendant", el.id);
+    el.scrollIntoView({ block: "nearest" });
+  } else s.input.removeAttribute("aria-activedescendant");
+}
+function close(s) {
+  s.list.hidden = true;
+  s.input.setAttribute("aria-expanded", "false");
+  s.input.removeAttribute("aria-activedescendant");
+}
+function choose(s, c) {
+  s.selected = c;
+  s.input.value = label(c);
+  close(s);
+  decorate();
+  renderFavorites();
+  convert();
+}
+function find(code) {
+  return currencies.find((c) => c.code === code);
+}
+function sanitizeHistory() {
+  history = history
+    .flatMap((item) => {
+      if (
+        !item ||
+        typeof item !== "object" ||
+        !item.from ||
+        !item.to ||
+        typeof item.from.code !== "string" ||
+        typeof item.to.code !== "string" ||
+        typeof item.result !== "string" ||
+        typeof item.date !== "string" ||
+        typeof item.fetchedAt !== "string"
+      )
+        return [];
+      const from = find(item.from.code),
+        to = find(item.to.code),
+        amount = CurrencyMath.normalizeAmount(item.amount),
+        rate = Number(item.rate);
+      if (
+        !from ||
+        !to ||
+        !amount ||
+        !Number.isFinite(Number(amount)) ||
+        !Number.isFinite(rate) ||
+        rate <= 0 ||
+        !Number.isFinite(Date.parse(item.fetchedAt)) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(item.date)
+      )
+        return [];
+      return [{ ...item, from, to, amount, rate }];
+    })
+    .slice(0, 6);
+  saveStored(HISTORY_KEY, history);
+}
+function setCurrencyFlag(selector, currency) {
+  const element = document.querySelector(selector);
+  element.className = "currency-flag";
+  element.textContent = "";
+  if (currency?.flagCode) {
+    const image = document.createElement("img");
+    image.src = FLAG_BASE_URL + currency.flagCode + ".svg";
+    image.alt = "";
+    image.addEventListener("error", () => {
+      element.textContent = currency.code.slice(0, 2);
+    });
+    element.append(image);
+  } else {
+    element.textContent = currency?.code?.slice(0, 2) || "\u00a4";
+  }
+}
+function decorate() {
+  const a = fromPicker.selected,
+    b = toPicker.selected;
+  setCurrencyFlag("#from-flag", a);
+  setCurrencyFlag("#to-flag", b);
+  document.querySelector("#amount-symbol").textContent =
+    a?.symbol || a?.code || "\u00a4";
+  for (const p of [fromPicker, toPicker]) {
+    const btn = document.querySelector('[data-favorite="' + p.prefix + '"]'),
+      yes = p.selected && favorites.includes(p.selected.code);
+    btn.textContent = yes ? "\u2605" : "\u2606";
+    btn.classList.toggle("is-favorite", Boolean(yes));
+    btn.setAttribute(
+      "aria-label",
+      (yes ? "Remover " : "Adicionar ") +
+        (p.selected?.name || "moeda") +
+        (yes ? " dos favoritos" : " aos favoritos"),
+    );
+  }
+}
+function currencyDigits(c) {
+  try {
+    return new Intl.NumberFormat(LOCALE, {
+      style: "currency",
+      currency: c.code,
+    }).resolvedOptions().maximumFractionDigits;
+  } catch {
+    return 2;
+  }
+}
+function money(n, c) {
+  const d = currencyDigits(c);
+  n = CurrencyMath.multiplyDecimal(String(n), 1, d);
+  const [whole = "0", fraction = ""] = String(n).split("."),
+    wholeText = new Intl.NumberFormat(LOCALE, {
+      useGrouping: true,
+      maximumFractionDigits: 0,
+    }).format(BigInt(whole || "0")),
+    fractionText = d
+      ? new Intl.NumberFormat(LOCALE, {
+          useGrouping: false,
+          minimumIntegerDigits: d,
+          maximumFractionDigits: 0,
+        }).format(BigInt((fraction + "0".repeat(d)).slice(0, d) || "0"))
+      : "",
+    decimalMark =
+      new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1 })
+        .formatToParts(1.1)
+        .find((p) => p.type === "decimal")?.value || ",",
+    number = wholeText + (d ? decimalMark + fractionText : ""),
+    parts = new Intl.NumberFormat(LOCALE, {
+      style: "currency",
+      currency: c.code,
+      minimumFractionDigits: d,
+      maximumFractionDigits: d,
+    }).formatToParts(0),
+    first = parts.findIndex((p) => p.type === "integer"),
+    last = parts
+      .map((p) => ["integer", "group", "decimal", "fraction"].includes(p.type))
+      .lastIndexOf(true);
+  return (
+    parts
+      .slice(0, first)
+      .map((p) => p.value)
+      .join("") +
+    number +
+    parts
+      .slice(last + 1)
+      .map((p) => p.value)
+      .join("")
+  );
+}
+function rateText(n) {
+  return new Intl.NumberFormat(LOCALE, { maximumSignificantDigits: 8 }).format(
+    n,
+  );
+}
+function stamp(date, fetched) {
+  const day = new Intl.DateTimeFormat(LOCALE, {
+      dateStyle: "medium",
+      timeZone: "UTC",
+    }).format(new Date(date + "T00:00:00")),
+    time = new Intl.DateTimeFormat(LOCALE, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(fetched));
+  return "Taxa de referência de " + day + " · consulta local às " + time;
+}
+function error(message) {
+  resultValue.classList.remove("loading", "success");
+  resultValue.textContent = message;
+  resultValue.classList.add("error");
+  rateInfo.textContent = "";
+  refreshButton.disabled = false;
+  copyButton.disabled = true;
+  lastResult = null;
+}
+async function convert({ refresh = false, record = false } = {}) {
+  if (amountDebounce !== null) {
+    clearTimeout(amountDebounce);
+    amountDebounce = null;
+  }
+  if (!fromPicker.selected || !toPicker.selected) return;
+  const id = ++requestId,
+    amountText = CurrencyMath.normalizeAmount(amountInput.value),
+    amount = Number(amountText),
+    from = fromPicker.selected,
+    to = toPicker.selected;
+  resultValue.classList.remove("error");
+  if (!amountText || !Number.isFinite(amount) || amount < 0) {
+    error("Informe um valor válido.");
+    return;
+  }
+  convertButton.disabled = true;
+  refreshButton.disabled = true;
+  copyButton.disabled = true;
+  resultValue.classList.remove("success");
+  resultValue.textContent = "…";
+  resultValue.classList.add("loading");
+  rateInfo.textContent = "Consultando cotação de referência…";
+  try {
+    const data =
+      from.code === to.code
+        ? {
+            rate: 1,
+            date: new Date().toISOString().slice(0, 10),
+            fetchedAt: new Date().toISOString(),
+          }
+        : await CurrencyProvider.getRate(from.code, to.code, { refresh });
+    if (id !== requestId) return;
+    const decimal = CurrencyMath.multiplyDecimal(
+        amountText,
+        data.rate,
+        currencyDigits(to),
+      ),
+      value = Number(decimal);
+    if (!Number.isFinite(value))
+      throw new Error("O valor calculado excede o limite permitido.");
+    const shown = money(decimal, to);
+    resultValue.textContent = shown;
+    resultValue.classList.remove("loading");
+    resultValue.classList.add("success");
+    rateInfo.textContent =
+      from.code === to.code
+        ? "1 " +
+          from.code +
+          " = 1 " +
+          to.code +
+          " · mesma moeda, sem cotação externa"
+        : rateText(data.rate) +
+          " " +
+          to.code +
+          " por 1 " +
+          from.code +
+          " · " +
+          stamp(data.date, data.fetchedAt);
+    lastResult = {
+      amount: amountText,
+      from,
+      to,
+      rate: data.rate,
+      date: data.date,
+      fetchedAt: data.fetchedAt,
+      result: shown,
+    };
+    refreshButton.disabled = from.code === to.code;
+    copyButton.disabled = false;
+    if (record) addHistory(lastResult);
+  } catch (e) {
+    if (id !== requestId) return;
+    resultValue.classList.remove("loading");
+    error(
+      e.message ||
+        "Não foi possível consultar a cotação. Verifique a conexão e tente novamente.",
+    );
+  } finally {
+    if (id === requestId) convertButton.disabled = false;
+  }
+}
+function addHistory(entry) {
+  history = [
+    entry,
+    ...history.filter(
+      (x) =>
+        !(
+          x.from.code === entry.from.code &&
+          x.to.code === entry.to.code &&
+          x.amount === entry.amount
+        ),
+    ),
+  ].slice(0, 6);
+  saveStored(HISTORY_KEY, history);
+  renderHistory();
+}
+function renderHistory() {
+  const list = document.querySelector("#history-list");
+  list.replaceChildren();
+  if (!history.length) {
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "Suas conversões aparecerão aqui.";
+    list.append(li);
+    return;
+  }
+  for (const item of history) {
+    const row = document.createElement("li");
+    row.className = "history-item";
+    row.setAttribute("role", "button");
+    row.setAttribute("tabindex", "0");
+    const info = document.createElement("div");
+    info.innerHTML =
+      "<strong>" +
+      esc(money(item.amount, item.from)) +
+      " <span>→</span> " +
+      esc(item.to.code) +
+      "</strong><small>" +
+      esc(
+        item.from.code +
+          " para " +
+          item.to.code +
+          " · " +
+          new Intl.DateTimeFormat(LOCALE, {
+            dateStyle: "short",
+            timeStyle: "short",
+          }).format(new Date(item.fetchedAt)),
+      ) +
+      "</small>";
+    const value = document.createElement("strong");
+    value.className = "history-value";
+    value.textContent = item.result;
+    row.append(info, value);
+    const replay = () => {
+      amountInput.value = item.amount;
+      fromPicker.selected = find(item.from.code);
+      toPicker.selected = find(item.to.code);
+      fromPicker.input.value = label(fromPicker.selected);
+      toPicker.input.value = label(toPicker.selected);
+      decorate();
+      convert();
+    };
+    row.setAttribute(
+      "aria-label",
+      "Repetir convers\u00e3o de " + item.from.code + " para " + item.to.code,
+    );
+    row.addEventListener("click", replay);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        replay();
+      }
+    });
+    list.append(row);
+  }
+}
+function renderFavorites() {
+  const box = document.querySelector("#favorite-chips");
+  box.replaceChildren();
+  const list = favorites
+    .map(find)
+    .filter(Boolean)
+    .sort((a, b) => collator.compare(a.name, b.name));
+  if (!list.length) {
+    const empty = document.createElement("span");
+    empty.className = "muted";
+    empty.textContent = "Toque na estrela para salvar moedas";
+    box.append(empty);
+    return;
+  }
+  for (const c of list) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "favorite-chip";
+    chip.textContent = c.code + " " + c.name;
+    chip.title = "Selecionar " + c.name;
+    chip.addEventListener("click", () => {
+      toPicker.selected = c;
+      toPicker.input.value = label(c);
+      decorate();
+      convert();
+    });
+    box.append(chip);
+  }
+}
+function toggleFavorite(prefix) {
+  const c = (prefix === "from" ? fromPicker : toPicker).selected;
+  if (!c) return;
+  favorites = favorites.includes(c.code)
+    ? favorites.filter((code) => code !== c.code)
+    : [...favorites, c.code];
+  saveStored(FAV_KEY, favorites);
+  decorate();
+  renderFavorites();
+}
+document.querySelector("#converter-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  convert({ record: true });
+});
+amountInput.addEventListener("input", () => {
+  clearTimeout(amountDebounce);
+  requestId++;
+  convertButton.disabled = false;
+  refreshButton.disabled = true;
+  copyButton.disabled = true;
+  amountDebounce = setTimeout(() => {
+    amountDebounce = null;
+    convert();
+  }, 250);
+});
+swapButton.addEventListener("click", () => {
+  if (swapButton.disabled) return;
+  const swapped = CurrencyMath.swapCurrencies(
+    fromPicker.selected,
+    toPicker.selected,
+  );
+  fromPicker.selected = swapped.from;
+  toPicker.selected = swapped.to;
+  fromPicker.input.value = label(fromPicker.selected);
+  toPicker.input.value = label(toPicker.selected);
+  decorate();
+  convert();
+});
+document
+  .querySelector('[data-favorite="from"]')
+  .addEventListener("click", () => toggleFavorite("from"));
+document
+  .querySelector('[data-favorite="to"]')
+  .addEventListener("click", () => toggleFavorite("to"));
+refreshButton.addEventListener("click", () => convert({ refresh: true }));
+copyButton.addEventListener("click", async () => {
+  if (!lastResult) return;
+  try {
+    await navigator.clipboard.writeText(
+      money(lastResult.amount, lastResult.from) + " = " + lastResult.result,
+    );
+    copyButton.textContent = "✓ Copiado";
+    setTimeout(() => (copyButton.textContent = "▢ Copiar resultado"), 1600);
+  } catch {
+    rateInfo.textContent = "Não foi possível copiar neste navegador.";
+  }
+});
+document.querySelector("#clear-history").addEventListener("click", () => {
+  history = [];
+  saveStored(HISTORY_KEY, history);
+  renderHistory();
+});
+async function initialize() {
+  try {
+    const items = await CurrencyProvider.getCurrencies();
+    currencies = items
+      .map(details)
+      .sort((a, b) =>
+        a.category === b.category
+          ? collator.compare(a.name, b.name)
+          : a.category === "fiat"
+            ? -1
+            : 1,
+      );
+    sanitizeHistory();
+    fromPicker.input.disabled = false;
+    toPicker.input.disabled = false;
+    fromPicker.selected = find("BRL") || currencies[0];
+    toPicker.selected =
+      find("USD") ||
+      currencies.find((c) => c.code !== fromPicker.selected.code) ||
+      currencies[0];
+    swapButton.disabled = false;
+    fromPicker.input.value = label(fromPicker.selected);
+    toPicker.input.value = label(toPicker.selected);
+    decorate();
+    renderFavorites();
+    renderHistory();
+    convert();
+  } catch (e) {
+    error("Não foi possível carregar as moedas: " + e.message);
+    rateInfo.textContent = "Verifique a conexão e recarregue a página.";
+  }
+}
 initialize();
