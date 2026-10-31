@@ -1,0 +1,33 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f4ef"><meta name="description" content="Converta moedas com cotações de referência atualizadas periodicamente.">
+  <title>Moeda — conversor de moedas</title><link rel="preconnect" href="https://api.frankfurter.dev"><link rel="stylesheet" href="styles.css">
+  <script src="provider.js" defer></script><script src="converter-core.js" defer></script><script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="#" aria-label="Moeda, início"><span class="brand-mark">m</span><span>moeda<span class="brand-dot">.</span></span></a><div class="header-actions"><span class="top-note"><span class="live-dot"></span> Cotações de referência</span><button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">🌙 Tema escuro</button></div></header>
+  <main>
+    <section class="intro" aria-labelledby="page-title"><p class="eyebrow">CÂMBIO SEM COMPLICAÇÃO</p><h1 id="page-title">Seu dinheiro,<br><span>em outra moeda.</span></h1><p class="intro-copy">Pesquise entre as moedas cobertas pela fonte e converta com cotações de referência.</p><p class="catalog-note">Moedas atuais e ativos digitais aparecem em categorias separadas. Códigos históricos não entram no catálogo ativo.</p></section>
+    <section class="converter" aria-label="Conversor de moedas">
+      <div class="converter-heading"><div><span class="section-kicker">CONVERSOR</span><h2>Quanto você quer converter?</h2></div><span class="sparkle" aria-hidden="true">✳</span></div>
+      <form id="converter-form">
+        <label class="field-label" for="amount">Valor</label><div class="amount-wrap"><span class="amount-symbol" id="amount-symbol">R$</span><input id="amount" name="amount" type="number" value="100" min="0" step="any" inputmode="decimal" aria-label="Valor para converter"></div>
+        <div class="currency-row">
+          <div class="currency-field"><label class="field-label" for="from-search">De</label><div class="picker-shell"><span class="currency-flag" id="from-flag" aria-hidden="true">🇧🇷</span><input id="from-search" class="currency-search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="from-options" autocomplete="off" placeholder="Buscar moeda" disabled><button class="favorite-toggle" type="button" data-favorite="from" aria-label="Favoritar moeda de origem" title="Favoritar moeda">☆</button><div class="picker-options" id="from-options" role="listbox" hidden></div></div></div>
+          <button class="swap-button" type="button" id="swap" aria-label="Inverter moedas" title="Inverter moedas">↔</button>
+          <div class="currency-field"><label class="field-label" for="to-search">Para</label><div class="picker-shell"><span class="currency-flag" id="to-flag" aria-hidden="true">🇺🇸</span><input id="to-search" class="currency-search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="to-options" autocomplete="off" placeholder="Buscar moeda" disabled><button class="favorite-toggle" type="button" data-favorite="to" aria-label="Favoritar moeda de destino" title="Favoritar moeda">☆</button><div class="picker-options" id="to-options" role="listbox" hidden></div></div></div>
+        </div>
+        <div class="quick-row"><span>Favoritas</span><div id="favorite-chips" class="favorite-chips"><span class="muted">Carregando moedas…</span></div></div>
+        <button class="convert-button" type="submit" id="convert-button"><span>Salvar no histórico</span><span aria-hidden="true">↗</span></button>
+      </form>
+      <div class="result" aria-live="polite" aria-atomic="true"><p class="result-label">VALOR CONVERTIDO</p><p class="result-value" id="result-value">—</p><p class="rate-info" id="rate-info">Carregando lista de moedas…</p><div class="result-actions"><button class="text-button" id="refresh-rate" type="button" disabled>↻ Atualizar taxa</button><button class="text-button" id="copy-result" type="button" disabled>▢ Copiar resultado</button></div></div>
+      <p class="disclaimer">Taxas de referência atualizadas periodicamente; não são cotações em tempo real. Nenhum valor de demonstração é usado.</p>
+    </section>
+    <section class="history-panel" aria-labelledby="history-title"><div class="history-heading"><h2 id="history-title">Conversões recentes</h2><button class="text-button" id="clear-history" type="button">Limpar</button></div><ul id="history-list" class="history-list"><li class="muted">Suas conversões aparecerão aqui.</li></ul></section>
+    <p class="source-note">Sem dados de demonstração · Fonte: <a href="https://frankfurter.dev/" target="_blank" rel="noreferrer">Frankfurter</a></p>
+  </main>
+  <footer><span>© 2026 Moeda</span><span>Feito para facilitar o dia a dia <span class="heart">♥</span></span></footer>
+</body></html>
+
