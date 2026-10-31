@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f4ef"><meta name="description" content="Converta moedas com cotações de referência atualizadas periodicamente.">
-  <title>Moeda — conversor de moedas</title><link rel="preconnect" href="https://api.frankfurter.dev"><link rel="stylesheet" href="styles.css">
-  <script src="provider.js" defer></script><script src="converter-core.js" defer></script><script src="app.js" defer></script>
+  <title>Moeda — conversor de moedas</title><link rel="preconnect" href="https://api.frankfurter.dev"><link rel="stylesheet" href="css/styles.css">
+  <script src="js/provider.js" defer></script><script src="js/converter-core.js" defer></script><script src="js/app.js" defer></script>
 </head>
 <body>
   <header class="topbar"><a class="brand" href="#" aria-label="Moeda, início"><span class="brand-mark">m</span><span>moeda<span class="brand-dot">.</span></span></a><div class="header-actions"><span class="top-note"><span class="live-dot"></span> Cotações de referência</span><button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">🌙 Tema escuro</button></div></header>
@@ -13,11 +13,11 @@
     <section class="converter" aria-label="Conversor de moedas">
       <div class="converter-heading"><div><span class="section-kicker">CONVERSOR</span><h2>Quanto você quer converter?</h2></div><span class="sparkle" aria-hidden="true">✳</span></div>
       <form id="converter-form">
-        <label class="field-label" for="amount">Valor</label><div class="amount-wrap"><span class="amount-symbol" id="amount-symbol">R$</span><input id="amount" name="amount" type="number" value="100" min="0" step="any" inputmode="decimal" aria-label="Valor para converter"></div>
+        <label class="field-label" for="amount">Valor</label><div class="amount-wrap"><span class="amount-symbol" id="amount-symbol">R$</span><input id="amount" name="amount" type="text" value="100" inputmode="decimal" autocomplete="off" aria-label="Valor para converter"></div>
         <div class="currency-row">
-          <div class="currency-field"><label class="field-label" for="from-search">De</label><div class="picker-shell"><span class="currency-flag" id="from-flag" aria-hidden="true">🇧🇷</span><input id="from-search" class="currency-search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="from-options" autocomplete="off" placeholder="Buscar moeda" disabled><button class="favorite-toggle" type="button" data-favorite="from" aria-label="Favoritar moeda de origem" title="Favoritar moeda">☆</button><div class="picker-options" id="from-options" role="listbox" hidden></div></div></div>
+          <div class="currency-field"><label class="field-label" for="from-search">De</label><div class="picker-shell"><span class="currency-flag" id="from-flag" aria-hidden="true">🇧🇷</span><input id="from-search" class="currency-search" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="from-options" autocomplete="off" placeholder="Buscar moeda" disabled><button class="favorite-toggle" type="button" data-favorite="from" aria-label="Favoritar moeda de origem" title="Favoritar moeda">☆</button><div class="picker-options" id="from-options" role="listbox" hidden></div></div></div>
           <button class="swap-button" type="button" id="swap" aria-label="Inverter moedas" title="Inverter moedas">↔</button>
-          <div class="currency-field"><label class="field-label" for="to-search">Para</label><div class="picker-shell"><span class="currency-flag" id="to-flag" aria-hidden="true">🇺🇸</span><input id="to-search" class="currency-search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="to-options" autocomplete="off" placeholder="Buscar moeda" disabled><button class="favorite-toggle" type="button" data-favorite="to" aria-label="Favoritar moeda de destino" title="Favoritar moeda">☆</button><div class="picker-options" id="to-options" role="listbox" hidden></div></div></div>
+          <div class="currency-field"><label class="field-label" for="to-search">Para</label><div class="picker-shell"><span class="currency-flag" id="to-flag" aria-hidden="true">🇺🇸</span><input id="to-search" class="currency-search" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="to-options" autocomplete="off" placeholder="Buscar moeda" disabled><button class="favorite-toggle" type="button" data-favorite="to" aria-label="Favoritar moeda de destino" title="Favoritar moeda">☆</button><div class="picker-options" id="to-options" role="listbox" hidden></div></div></div>
         </div>
         <div class="quick-row"><span>Favoritas</span><div id="favorite-chips" class="favorite-chips"><span class="muted">Carregando moedas…</span></div></div>
         <button class="convert-button" type="submit" id="convert-button"><span>Salvar no histórico</span><span aria-hidden="true">↗</span></button>
