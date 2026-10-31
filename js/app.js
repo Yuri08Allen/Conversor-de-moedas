@@ -893,6 +893,8 @@ function toggleFavorite(prefix) {
 }
 document.querySelector("#converter-form").addEventListener("submit", (e) => {
   e.preventDefault();
+  clearTimeout(amountDebounce);
+  amountDebounce = null;
   syncUrl();
   convert({ record: true });
 });
