@@ -71,3 +71,36 @@ test("nao usa taxa antiga se o par for invalido (404)", async () => {
   status = 404;
   await assert.rejects(f.provider.getRate("BRL", "USD"), /API/);
 });
+
+test("aborta consulta apos o limite de 10 segundos", async () => {
+  let aborted = false;
+  const values = new Map();
+  const provider = createCurrencyProvider({
+    fetchImpl: (_url, { signal }) =>
+      new Promise((_resolve, reject) => {
+        const onAbort = () => {
+          aborted = true;
+          const error = new Error("Aborted");
+          error.name = "AbortError";
+          reject(error);
+        };
+        if (signal.aborted) onAbort();
+        else signal.addEventListener("abort", onAbort, { once: true });
+      }),
+    storage: {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+    },
+    setTimer: (callback) => {
+      callback();
+      return 1;
+    },
+    clearTimer: () => {},
+  });
+
+  await assert.rejects(
+    provider.getCurrencies(),
+    /limite de 10 segundos/,
+  );
+  assert.equal(aborted, true);
+});
