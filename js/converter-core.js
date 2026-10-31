@@ -28,7 +28,7 @@
       const grouping = decimal === "," ? "." : ",";
       const [whole, fraction, ...rest] = text.split(decimal);
       const groupingPattern =
-        grouping === "." ? /^\d{1,3}(?:\.\d{3})+$/ : /^\d{1,3}(?:,\d{3})+$/;
+        grouping === "." ? /^[1-9]\d{0,2}(?:\.\d{3})+$/ : /^[1-9]\d{0,2}(?:,\d{3})+$/;
       if (
         rest.length ||
         !/^\d+$/.test(fraction) ||
@@ -40,7 +40,7 @@
       if (commas !== 1) return "";
       text = text.replace(",", ".");
     } else if (dots) {
-      if (/^\d{1,3}(?:\.\d{3})+$/.test(text)) text = text.replace(/\./g, "");
+      if (/^[1-9]\d{0,2}(?:\.\d{3})+$/.test(text)) text = text.replace(/\./g, "");
       else if (dots !== 1) return "";
     }
     if (text.startsWith(".")) text = "0" + text;
