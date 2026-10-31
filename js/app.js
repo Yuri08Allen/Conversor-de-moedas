@@ -738,7 +738,7 @@ async function convert({ refresh = false, record = false } = {}) {
     resultValue.classList.add("success");
     rateInfo.textContent =
       data.stale
-        ? "Taxa armazenada de " + stamp(data.date, data.fetchedAt) + " \u00b7 consulta indispon\u00edvel agora."
+        ? stamp(data.date, data.fetchedAt) + " \u00b7 fonte indispon\u00edvel agora; usando a \u00faltima taxa salva."
         : from.code === to.code
         ? "1 " +
           from.code +
