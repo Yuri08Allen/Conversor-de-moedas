@@ -16,7 +16,7 @@ No macOS ou Linux, use:
 python3 -m http.server 8000
 ```
 
-Abra http://localhost:8000. Servir localmente evita restrições que alguns navegadores aplicam a chamadas da API quando a página é aberta como arquivo.
+Abra http://localhost:8000 no computador. Para acessar pelo celular na mesma rede Wi-Fi, inicie com `iniciar-moeda.bat`, copie o IPv4 do computador exibido no terminal e abra `http://IP-DO-COMPUTADOR:8000` no Chrome do celular. Se o Windows perguntar, permita o acesso em rede privada. A pagina precisa de servidor HTTP porque usa módulos ES e consulta uma API externa.
 
 Execute os testes no Windows PowerShell:
 

@@ -1,3 +1,6 @@
+import * as CurrencyMath from "./converter-core.js";
+import { CurrencyProvider } from "./provider.js";
+
 const LOCALE = "pt-BR";
 const DIGITAL_ASSETS = new Set(["BTC", "BCH", "ETH", "LTC", "XRP"]);
 const THEME_KEY = "moeda.theme.v1";
@@ -239,8 +242,7 @@ const fromPicker = createPicker("from"),
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
-  themeToggle.textContent =
-    theme === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+  themeToggle.textContent = "Tema escuro";
   document.querySelector("meta[name=theme-color]").content =
     theme === "dark" ? "#171b19" : "#f6f4ef";
   try {
@@ -264,7 +266,7 @@ let currencies = [],
   requestId = 0,
   amountDebounce = null,
   favorites = readStored(FAV_KEY, ["BRL", "USD", "EUR"]),
-  history = readStored(HISTORY_KEY, []);
+  conversionHistory = readStored(HISTORY_KEY, []);
 function readStored(k, f) {
   try {
     const v = JSON.parse(localStorage.getItem(k));
@@ -385,23 +387,28 @@ function createPicker(prefix) {
   return state;
 }
 function positionOptions(s) {
-  const rect = s.input.getBoundingClientRect(),
-    width = Math.min(320, window.innerWidth - 16),
-    gap = 10,
-    rightSpace = window.innerWidth - rect.right,
-    leftSpace = rect.left;
-  let left;
-  if (rightSpace >= width + gap) left = rect.right + gap;
-  else if (leftSpace >= width + gap) left = rect.left - width - gap;
-  else left = 8;
-  const maxHeight = Math.min(320, window.innerHeight - 16),
-    height = Math.min(s.list.scrollHeight, maxHeight),
-    top = Math.max(8, Math.min(rect.top, window.innerHeight - height - 8));
-  s.list.style.left =
-    Math.max(8, Math.min(left, window.innerWidth - width - 8)) + "px";
+  const rect = s.input.getBoundingClientRect();
+  const width = Math.min(320, window.innerWidth - 16);
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+  const maxHeight = Math.min(320, window.innerHeight - 16);
+  const below = rect.bottom + 6;
+  const availableBelow = window.innerHeight - below - 8;
+  const minUsefulHeight = Math.min(180, maxHeight);
+  const opensBelow = availableBelow >= minUsefulHeight;
+  const top = opensBelow
+    ? below
+    : Math.max(8, rect.top - maxHeight - 6);
+  const availableAtPosition = opensBelow
+    ? availableBelow
+    : rect.top - 14;
+
+  s.list.style.left = left + "px";
   s.list.style.top = top + "px";
   s.list.style.width = width + "px";
-  s.list.style.maxHeight = maxHeight + "px";
+  s.list.style.maxHeight = Math.max(
+    minUsefulHeight,
+    Math.min(maxHeight, availableAtPosition),
+  ) + "px";
 }
 function options(s, q = "") {
   const query = q
@@ -492,7 +499,12 @@ function active(s) {
   const el = s.list.querySelector("#" + s.prefix + "-option-" + s.active);
   if (el) {
     s.input.setAttribute("aria-activedescendant", el.id);
-    el.scrollIntoView({ block: "nearest" });
+    const listRect = s.list.getBoundingClientRect();
+    const optionRect = el.getBoundingClientRect();
+    if (optionRect.top < listRect.top)
+      s.list.scrollTop -= listRect.top - optionRect.top;
+    else if (optionRect.bottom > listRect.bottom)
+      s.list.scrollTop += optionRect.bottom - listRect.bottom;
   } else s.input.removeAttribute("aria-activedescendant");
 }
 function close(s) {
@@ -500,19 +512,39 @@ function close(s) {
   s.input.setAttribute("aria-expanded", "false");
   s.input.removeAttribute("aria-activedescendant");
 }
+function syncUrl(method = "replaceState") {
+  if (!fromPicker.selected || !toPicker.selected) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("de", fromPicker.selected.code);
+  url.searchParams.set("para", toPicker.selected.code);
+  url.searchParams.set("valor", amountInput.value.trim() || "100");
+  window.history[method]({ moeda: true }, "", url);
+}
+function restoreUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const from = find((params.get("de") || "").toUpperCase());
+  const to = find((params.get("para") || "").toUpperCase());
+  const amount = CurrencyMath.normalizeAmount(params.get("valor") || "");
+  if (from) fromPicker.selected = from;
+  if (to) toPicker.selected = to;
+  if (amount) amountInput.value = amount;
+  fromPicker.input.value = label(fromPicker.selected);
+  toPicker.input.value = label(toPicker.selected);
+}
 function choose(s, c) {
   s.selected = c;
   s.input.value = label(c);
   close(s);
   decorate();
   renderFavorites();
+  syncUrl("pushState");
   convert();
 }
 function find(code) {
   return currencies.find((c) => c.code === code);
 }
 function sanitizeHistory() {
-  history = history
+  conversionHistory = conversionHistory
     .flatMap((item) => {
       if (
         !item ||
@@ -544,7 +576,7 @@ function sanitizeHistory() {
       return [{ ...item, from, to, amount, rate }];
     })
     .slice(0, 6);
-  saveStored(HISTORY_KEY, history);
+  saveStored(HISTORY_KEY, conversionHistory);
 }
 function setCurrencyFlag(selector, currency) {
   const element = document.querySelector(selector);
@@ -705,7 +737,9 @@ async function convert({ refresh = false, record = false } = {}) {
     resultValue.classList.remove("loading");
     resultValue.classList.add("success");
     rateInfo.textContent =
-      from.code === to.code
+      data.stale
+        ? "Taxa armazenada de " + stamp(data.date, data.fetchedAt) + " \u00b7 consulta indispon\u00edvel agora."
+        : from.code === to.code
         ? "1 " +
           from.code +
           " = 1 " +
@@ -742,9 +776,9 @@ async function convert({ refresh = false, record = false } = {}) {
   }
 }
 function addHistory(entry) {
-  history = [
+  conversionHistory = [
     entry,
-    ...history.filter(
+    ...conversionHistory.filter(
       (x) =>
         !(
           x.from.code === entry.from.code &&
@@ -753,20 +787,20 @@ function addHistory(entry) {
         ),
     ),
   ].slice(0, 6);
-  saveStored(HISTORY_KEY, history);
+  saveStored(HISTORY_KEY, conversionHistory);
   renderHistory();
 }
 function renderHistory() {
   const list = document.querySelector("#history-list");
   list.replaceChildren();
-  if (!history.length) {
+  if (!conversionHistory.length) {
     const li = document.createElement("li");
     li.className = "muted";
     li.textContent = "Suas conversões aparecerão aqui.";
     list.append(li);
     return;
   }
-  for (const item of history) {
+  for (const item of conversionHistory) {
     const row = document.createElement("li");
     row.className = "history-item";
     row.setAttribute("role", "button");
@@ -800,6 +834,7 @@ function renderHistory() {
       fromPicker.input.value = label(fromPicker.selected);
       toPicker.input.value = label(toPicker.selected);
       decorate();
+      syncUrl("pushState");
       convert();
     };
     row.setAttribute(
@@ -840,6 +875,7 @@ function renderFavorites() {
       toPicker.selected = c;
       toPicker.input.value = label(c);
       decorate();
+      syncUrl("pushState");
       convert();
     });
     box.append(chip);
@@ -857,6 +893,7 @@ function toggleFavorite(prefix) {
 }
 document.querySelector("#converter-form").addEventListener("submit", (e) => {
   e.preventDefault();
+  syncUrl();
   convert({ record: true });
 });
 amountInput.addEventListener("input", () => {
@@ -867,6 +904,7 @@ amountInput.addEventListener("input", () => {
   copyButton.disabled = true;
   amountDebounce = setTimeout(() => {
     amountDebounce = null;
+    syncUrl();
     convert();
   }, 250);
 });
@@ -881,6 +919,7 @@ swapButton.addEventListener("click", () => {
   fromPicker.input.value = label(fromPicker.selected);
   toPicker.input.value = label(toPicker.selected);
   decorate();
+  syncUrl("pushState");
   convert();
 });
 document
@@ -903,9 +942,14 @@ copyButton.addEventListener("click", async () => {
   }
 });
 document.querySelector("#clear-history").addEventListener("click", () => {
-  history = [];
-  saveStored(HISTORY_KEY, history);
+  conversionHistory = [];
+  saveStored(HISTORY_KEY, conversionHistory);
   renderHistory();
+});
+window.addEventListener("popstate", () => {
+  restoreUrl();
+  decorate();
+  convert();
 });
 async function initialize() {
   try {
@@ -928,8 +972,8 @@ async function initialize() {
       currencies.find((c) => c.code !== fromPicker.selected.code) ||
       currencies[0];
     swapButton.disabled = false;
-    fromPicker.input.value = label(fromPicker.selected);
-    toPicker.input.value = label(toPicker.selected);
+    restoreUrl();
+    syncUrl();
     decorate();
     renderFavorites();
     renderHistory();

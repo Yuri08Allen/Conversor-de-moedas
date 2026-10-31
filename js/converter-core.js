@@ -1,4 +1,3 @@
-(function (root) {
   function decimalParts(value) {
     const match = String(value)
       .trim()
@@ -75,7 +74,4 @@
   function swapCurrencies(from, to) {
     return { from: to, to: from };
   }
-  const api = { multiplyDecimal, normalizeAmount, swapCurrencies };
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
-  if (root) root.CurrencyMath = api;
-})(typeof window !== "undefined" ? window : globalThis);
+export { multiplyDecimal, normalizeAmount, swapCurrencies };

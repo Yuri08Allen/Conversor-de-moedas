@@ -1,10 +1,6 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const {
-  multiplyDecimal,
-  normalizeAmount,
-  swapCurrencies,
-} = require("./converter-core.js");
+import test from "node:test";
+import assert from "node:assert/strict";
+import { multiplyDecimal, normalizeAmount, swapCurrencies } from "./converter-core.js";
 
 test("converte quantia usando a taxa real sem erro de ponto flutuante", () => {
   assert.equal(multiplyDecimal("100.00", "0.057123", 2), "5.71");

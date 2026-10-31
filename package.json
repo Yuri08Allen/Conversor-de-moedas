@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node --test js/converter-core.test.js"
+    "test": "node --test js/*.test.js"
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "type": "module"
 }
